@@ -1,0 +1,13 @@
+{
+  "jsonVersion": "1.0.0",
+  "fallback": "de-DE",
+  "entries": [
+	{
+	  "key": "TitleKey",
+	  "values": {
+		"de-DE": "Deutsche Überschrift",
+		"en-US": "English title"
+	  }
+	}
+  ]
+}

@@ -10,18 +10,18 @@ import SwiftUI
 
 public final class RMLocalizationManager : ObservableObject {
 	// create a singleton
-	//public static var shared = RMLocalizationManager()
+	public static var shared = RMLocalizationManager()
 
-	private static var privateSharedInstance: RMLocalizationManager?
+	//private static var privateSharedInstance: RMLocalizationManager?
 
-	static var shared: RMLocalizationManager {
-		if privateSharedInstance == nil {
-			privateSharedInstance = RMLocalizationManager()
-		}
-		return privateSharedInstance!
-	}
+//	static var shared = RMLocalizationManager() {
+//		if privateSharedInstance == nil {
+//			privateSharedInstance = RMLocalizationManager()
+//		}
+//		return privateSharedInstance!
+//	}
 
-	//init(){}
+	init(){}
 	
 	// this is the name of the bundle I will create on the doc folder on the device
 	private let bundleNameForLocalisation = "RMDynamicLocalisation.bundle"
@@ -29,15 +29,19 @@ public final class RMLocalizationManager : ObservableObject {
 	// properties used to transforming the json to data
 	private var fallbackLanguage: String = "" // will be updated in init
 	private var translations: Dictionary<String, [String:String]> = [:]
-	private var tableName: String = "myStrings"
+
 	
 	// default is the main bundle
-	var currentBundle = Bundle.main
-	
+	public var currentBundle = Bundle.main
+	// I need to set the table name for different areas of the app
+	// it will be used in the Text initialiser together with the Bundle name
+	public var tableName: String = "myStrings"
+
 	// convenience variable
 	private let manager = FileManager.default
 	private static let documentsDirectoryURL = try! FileManager().url(for: .documentDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-	
+
+
 	// This is the dynamic custom bundle path I will use (eventually not yet created)
 	private lazy var bundlePath: URL = {
 		let bundlePath = Self.documentsDirectoryURL.appendingPathComponent(bundleNameForLocalisation, isDirectory: true)
@@ -49,15 +53,21 @@ public final class RMLocalizationManager : ObservableObject {
 	/// this will update our currentBundle property but also doing a check that the folder exists and that a string file is avail
 	public func setCurrentBundle(forLanguage: String) {
 		do {
-			currentBundle = try returnCurrentBundleForLanguage(lang: forLanguage)
+			currentBundle = try returnCurrentBundleFor(language: forLanguage)
 		} catch {
 			print(#line, "=== Not custom - getPathForLocalLanguage 🤚🏻🤚🏻🤚🏻 =========")
 			let currentLocale = Bundle.main.preferredLocalizations.first!
 			currentBundle = Bundle(path: getPathForLocalLanguage(language: currentLocale))!
 		}
 	}
-	
-	
+
+
+	// when I want to access a different table (.string file)
+	public func setTableName(tablename: String) {
+		self.tableName = tablename
+	}
+
+
 	/// I will add strings files to the custom bundle passing a json file to decode
 	/// - Parameters:
 	///   - json: The json containing my languages, keys and translations
@@ -189,52 +199,68 @@ public final class RMLocalizationManager : ObservableObject {
 		// for every language localised in my app I create a corresponding folder in the bundle
 		for localisation in availableLocalisations {
 			let folderPath = bundlePath.appendingPathComponent("\(localisation).lproj", isDirectory: true)
-			print(folderPath.lastPathComponent," ---- > folder created ⭐️")
 			if fileManager.fileExists(atPath: folderPath.path) == false {
+				do {
 				try fileManager.createDirectory(at: folderPath, withIntermediateDirectories: true, attributes:  [FileAttributeKey.protectionKey : FileProtectionType.complete])
+				} catch {
+					print(#function, error.localizedDescription)
+				}
 			}
+			print(folderPath.lastPathComponent," ---- > folder created ⭐️")
 		}
 		
 		// create my strings files - reminder
 		// translation is ex ["de": ["ZudenEinstellungen":"Zu den Einstellungen"]]
+		// and for every de-DE or en-US there is a de and en folder
 		for language in translations {
-			let lang = language.key //"de"
-			
+			let langKey = language.key //"de-DE"
+			let langKeyShort = String(language.key.prefix(2)) //"de"
 			// check that the language I get from web is supported! else return
-			guard availableLocalisations.contains(lang) else { continue }
+			guard availableLocalisations.contains(langKey) || availableLocalisations.contains(langKeyShort)
+			else { continue }
 			
-			// look for my folder
-			let langPath = bundlePath.appendingPathComponent("\(lang).lproj", isDirectory: true)
-			
+			// look for my folder.
+			let langPath = bundlePath.appendingPathComponent("\(langKey).lproj", isDirectory: true)
+			let langPathShort = bundlePath.appendingPathComponent("\(langKeyShort).lproj", isDirectory: true)
 			let sentences = language.value
 			let res = sentences.reduce("", { $0 + "\"\($1.key)\" = \"\($1.value)\";\n" })
 			
 			let filePath = langPath.appendingPathComponent("\(tableName).strings")
+			let filePathShort = langPathShort.appendingPathComponent("\(tableName).strings")
+
 			let data = res.data(using: .utf16)
+			// this will put our strings file in both de-DE and de directories
 			fileManager.createFile(atPath: filePath.path, contents: data, attributes: [FileAttributeKey.protectionKey : FileProtectionType.complete])
+			// I will overwrite. so if we have en-US and then en-HK in the same entry the last will be the put in the en.proj folder - priority matters!
+			// cant do differently otherwise if there is an update in languages the file will never be updated - better overwrite everytime. It will be seldom that both flavour of en will be present!
+			fileManager.createFile(atPath: filePathShort.path, contents: data, attributes: [FileAttributeKey.protectionKey : FileProtectionType.complete])
 		}
 	}
 	
 	func clean() throws {
 		// TODO: There can be multiple table names in the same Bundle. So only remove the bundle if there is no more string files.
-		var _: Dictionary<String, Int> = [:]
-		
 		for _ in fileManager.enumerator(at: bundlePath, includingPropertiesForKeys: nil, options: [.skipsPackageDescendants])! {
 			if fileManager.fileExists(atPath: bundlePath.path) {
+				do {
 				try fileManager.removeItem(at: bundlePath)
+				} catch {
+					print(#function," could not remove file! 💣💣💣")
+				}
 			}
 		}
 		
 	}
 }
 
+
+// in the extension I have a bundle helper function
 extension RMLocalizationManager {
-	public func returnCurrentBundleForLanguage(lang: String) throws -> Bundle {
+	public func returnCurrentBundleFor(language: String) throws -> Bundle {
 		// these lines just check if the app already has custom bundle already
 		// if no custom bundle found it returns the local main bundle
 		if manager.fileExists(atPath: bundlePath.path) == false {
 			print(#line, "=== Not custom bundle found - using main bundle 🤚🏻🤚🏻🤚🏻 =========")
-			return Bundle(path: getPathForLocalLanguage(language: lang))!
+			return Bundle(path: getPathForLocalLanguage(language: language))!
 		}
 		// we are here if there is a custom bundle and we need to get the path to the proj folder so we will check if the language folder is in the custom bundle
 		do {
@@ -251,7 +277,7 @@ extension RMLocalizationManager {
 				for case let folderURL as URL in enumerator {
 					_ = try folderURL.resourceValues(forKeys: Set(resourceKeys))
 					// if I get the folder for my selected language
-					if folderURL.lastPathComponent == ("\(lang).lproj"){
+					if folderURL.lastPathComponent == ("\(language).lproj"){
 						// I create a second enumerator to loop on the strings files
 						if let enumerator2 = FileManager.default.enumerator(
 							at: folderURL,
@@ -273,11 +299,11 @@ extension RMLocalizationManager {
 			// this catches any errors thrown by the file manager
 		} catch {
 			print(#line, "=== Not custom - getPathForLocalLanguage 🤚🏻🤚🏻🤚🏻 =========")
-			return Bundle(path: getPathForLocalLanguage(language: lang))!
+			return Bundle(path: getPathForLocalLanguage(language: language))!
 		}
 		// if there is no file matching language and table I return the main bundle
 		print(#line, "=== Not custom - getPathForLocalLanguage 🤚🏻🤚🏻🤚🏻 =========")
-		return Bundle(path: getPathForLocalLanguage(language: lang))!
+		return Bundle(path: getPathForLocalLanguage(language: language))!
 	}
 	
 	

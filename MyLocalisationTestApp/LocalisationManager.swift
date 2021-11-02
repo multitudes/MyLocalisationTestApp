@@ -7,7 +7,11 @@
 
 import SwiftUI
 
-
+extension Bundle {
+  var developerLanguage: String {
+	return object(forInfoDictionaryKey: "CFBundleDevelopmentRegion") as? String ?? ""
+  }
+}
 public final class RMLocalizationManager : ObservableObject {
 	// create a singleton
 	public static var shared = RMLocalizationManager()
@@ -21,7 +25,9 @@ public final class RMLocalizationManager : ObservableObject {
 //		return privateSharedInstance!
 //	}
 
-	init(){}
+	init(){
+		print("developerLanguage: ", Bundle.main.developerLanguage)
+	}
 	
 	// this is the name of the bundle I will create on the doc folder on the device
 	private let bundleNameForLocalisation = "RMDynamicLocalisation.bundle"
@@ -136,15 +142,25 @@ public final class RMLocalizationManager : ObservableObject {
 				
 				// here the value of the entry is actually itself a dict, so I iterate on it. if a language is missing I will add the fallback
 				for (keyvalue, value) in entry.values {
-					let shortLangKey = String(keyvalue) // no need to convert from en-US to like "en" to use in my translations folder names
+					let langKey = keyvalue // no need to convert from en-US to like "en" to use in my translations folder names
 					
 					// in this case all is good. My avail lang is also avail in the json
-					if localisation == shortLangKey {
+					if localisation == keyvalue {
 						// get the contents from my translationsDictionary if any already
-						var existingDict = translationsDictionary[shortLangKey, default: [:]]
+						var existingDict = translationsDictionary[langKey, default: [:]]
 						// add the new entry to the nested dict - the entry.key at root is my "keyword": like "tour1", the key in values is ex "en-US" and translated text is the value in the iterated values
 						existingDict[entry.key] = value // existingDict["Tour1"] = "Tour 1"
 						//and this updated dict will be put in the main dict which will be in the en.proj folder or de.proj folder depending
+						translationsDictionary[localisation] = existingDict
+					} else if localisation == Bundle.main.developerLanguage {
+						var existingDict = translationsDictionary["en-US", default: [:]]
+						existingDict[entry.key] = entry.values["en-US"]
+						// again update the dict
+						translationsDictionary[localisation] = existingDict
+					} else if localisation == "de" {
+						var existingDict = translationsDictionary["de-DE", default: [:]]
+						existingDict[entry.key] = entry.values["de-DE"]
+						// again update the dict
 						translationsDictionary[localisation] = existingDict
 					} else {
 						// default will be the fallback but only if the language is not avail in the language pool for entry

@@ -133,7 +133,7 @@ public final class RMLocalizationManager : ObservableObject {
 		for entry in entries {
 			
 			// for each entry I need to know which lang are avail and which are missing
-			var poolOfLanguagesForEntry: [String] = Array(entry.values.keys)
+			let poolOfLanguagesForEntry: [String] = Array(entry.values.keys)
 			
 			// debug only
 			//poolOfLanguagesForEntry.append(contentsOf: ["de", "en"])
@@ -152,6 +152,7 @@ public final class RMLocalizationManager : ObservableObject {
 						existingDict[entry.key] = value // existingDict["Tour1"] = "Tour 1"
 						//and this updated dict will be put in the main dict which will be in the en.proj folder or de.proj folder depending
 						translationsDictionary[localisation] = existingDict
+						// the next two need to be probably changed later - dont know if I will have de and en languages in settings - need to test
 					} else if localisation == Bundle.main.developerLanguage {
 						var existingDict = translationsDictionary["en-US", default: [:]]
 						existingDict[entry.key] = entry.values["en-US"]

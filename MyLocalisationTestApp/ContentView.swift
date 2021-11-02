@@ -11,9 +11,12 @@ struct ContentView: View {
 	private var localisationManager = RMLocalizationManager.shared
 
 	var myTitle: LocalizedStringKey = "Hello"
+
     var body: some View {
 		VStack {
-			Text(myTitle)//, bundle: RMLocalizationManager.shared.currentBundle)
+			Text(myTitle) //This is localised in main bundle
+
+			// I need the table name - otherwise it defaults to Localised!
 			Text("TitleKey", tableName: "myStrings", bundle: RMLocalizationManager.shared.currentBundle)
 				.font(.title)
 				.padding()

@@ -21,12 +21,16 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 		// init the localisation Manager
 		let localisationManager = RMLocalizationManager.shared
 
-			// starting the app or returning from settings with a change of language I update the localisation manager with new locale
-			let currentLocale = Bundle.main.preferredLocalizations.first!
-			localisationManager.setCurrentBundle(forLanguage: currentLocale)
-			print("localisationManager.currentBundle 📥 ",localisationManager.currentBundle)
-			print("localisationManager. currentLocale  📥 ",currentLocale)
-			localisationManager.createLocalizedFiles(from: "test.json", table: "myStrings")
+		// Important - first create the strings files - then set the bundle
+		localisationManager.createLocalizedFiles(from: "test.json", table: "myStrings")
+
+		// starting the app or returning from settings with a change of language I update the localisation manager with new locale
+		let currentLocale = Bundle.main.preferredLocalizations.first!
+		localisationManager.setCurrentBundle(forLanguage: currentLocale)
+
+		print("localisationManager.currentBundle 📥 ",localisationManager.currentBundle)
+		print("localisationManager. currentLocale  📥 ",currentLocale)
+
 
 
 		// Create the SwiftUI view that provides the window contents.
